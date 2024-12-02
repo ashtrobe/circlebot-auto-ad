@@ -12,7 +12,7 @@ logger.setLevel(logging.INFO)
 console_handler = logging.StreamHandler(sys.stdout)
 console_handler.setLevel(logging.INFO)  # General info logging for console
 
-file_handler = logging.FileHandler('app.log')
+file_handler = logging.FileHandler('app.log', encoding='utf-8')  # Ensure log file is encoded in UTF-8
 file_handler.setLevel(logging.INFO)  # Log everything to a file
 
 # Formatter for logs
@@ -27,6 +27,10 @@ logger.addHandler(file_handler)
 # Suppress tracking URL logs in the console
 class NoTrackingFilter(logging.Filter):
     def filter(self, record):
+        # Allow the ad reward message to be printed, even if it contains special characters
+        if "✨ Ad Reward Claimed" in record.getMessage():
+            return True
+        # Otherwise suppress tracking URL logs
         return not any(substring in record.getMessage() for substring in [
             "Sending tracking request to:", 
             "Tracking request successful:",
@@ -96,10 +100,17 @@ def claim_ad(tg_id, tg_platform, platform, language, chat_type, chat_instance, t
         if response.status_code == 200:
             ad_data = response.json()
             timestamp = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
-            print(f"{CYAN}{timestamp} - ✨ Ad Reward Claimed, added +1000 Sparks!{RESET}")
 
-            logger.info(f"Ad claimed successfully: {ad_url}")
+            # Log successful ad claim
+            logger.info(f"{CYAN}{timestamp} - ✨ Ad Reward Claimed, added +1000 Sparks!{RESET}")
+            
+            # Process tracking URLs
             tracking_urls = [tracking.get("value") for tracking in ad_data.get("banner", {}).get("trackings", [])]
+            if not tracking_urls:  # If no tracking URLs are found
+                logger.error("No Claim URLs found.")
+                return False  # Signal to restart the process
+
+            # If tracking URLs are found, send tracking requests
             for tracking_url in tracking_urls:
                 logger.info(f"Sending tracking request to: {tracking_url}")
                 try:
@@ -107,15 +118,24 @@ def claim_ad(tg_id, tg_platform, platform, language, chat_type, chat_instance, t
                     if tracking_response.status_code == 200:
                         logger.info(f"Tracking request successful: {tracking_url}")
                     else:
+                        # If tracking request fails, restart the process
                         logger.error(f"Failed tracking request: {tracking_url}, Status Code: {tracking_response.status_code}")
+                        return False  # Signal to restart the process
+
                 except Exception as e:
+                    # If tracking request fails, log and restart the process
                     logger.error(f"Error during tracking request: {tracking_url}, Error: {e}")
+                    return False  # Signal to restart the process
+
+            return True  # All tracking requests were successful
         else:
-            print(f"{RED}❌ Failed to claim ad. Status Code: {response.status_code}{RESET}")
             logger.error(f"Failed to claim ad: {ad_url}, Response: {response.text}")
+            return False  # Signal to restart the process
+
     except Exception as e:
-        print(f"{RED}⚠️ Error claiming ad. Check logs for more details.{RESET}")
+        # Log errors and restart
         logger.error(f"Error claiming ad: {ad_url}, Error: {e}")
+        return False  # Signal to restart the process
 
 # Function to automatically watch ads in a loop
 def watch_ads():
@@ -131,15 +151,25 @@ def watch_ads():
     top_domain = session_params.get("top_domain")
 
     if not all([tg_id, tg_platform, language, chat_type, chat_instance, top_domain]):
-        print(f"{RED}❌ Missing session parameters. Check your data file.{RESET}")
         logger.error("Missing one or more required parameters in the session file.")
         return
 
     while True:
-        platform = 'Win32'
-        claim_ad(tg_id, tg_platform, platform, language, chat_type, chat_instance, top_domain)
-        print(f"{YELLOW}⏳ Waiting before claiming the next AD...{RESET}")
-        time.sleep(150)
+        try:
+            platform = 'Win32'
+            ad_claimed = claim_ad(tg_id, tg_platform, platform, language, chat_type, chat_instance, top_domain)
+
+            if not ad_claimed:  # If no tracking request was sent or the process failed, restart
+                logger.error("Retrying...")
+                continue  # Restart the loop
+
+            logger.info("⏳ Waiting before claiming the next AD...")  # Logs waiting message to the log file
+            sys.stdout.flush()  # Ensure the message is printed immediately to the log file.
+            time.sleep(150)
+        except Exception as e:
+            # If there is any error in claiming or tracking, restart the loop
+            logger.error(f"An error occurred, Retrying... Error: {e}")
+            continue
 
 # Start the ad watching process
 watch_ads()
