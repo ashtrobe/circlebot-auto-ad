@@ -80,7 +80,7 @@ def read_session_params(filename="data.txt"):
         required_keys = ['tg_id', 'tg_platform', 'language', 'chat_type', 'chat_instance', 'top_domain']
         missing_keys = [key for key in required_keys if key not in session_params]
         if missing_keys:
-            logger.error(f"Missing required keys in the session file: {', '.join(missing_keys)}")
+            logger.error(f"Missing required keys in the data file: {', '.join(missing_keys)}")
             return None
 
         return session_params
@@ -151,7 +151,7 @@ def watch_ads():
     top_domain = session_params.get("top_domain")
 
     if not all([tg_id, tg_platform, language, chat_type, chat_instance, top_domain]):
-        logger.error("Missing one or more required parameters in the session file.")
+        logger.error("Missing one or more required parameters in the data file.")
         return
 
     while True:
