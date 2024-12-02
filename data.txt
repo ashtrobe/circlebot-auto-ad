@@ -1,0 +1,6 @@
+tg_id=
+tg_platform=
+language=en
+chat_type=sender
+chat_instance=
+top_domain=bot.toncircle.org
