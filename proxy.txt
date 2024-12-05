@@ -1,1 +1,2 @@
 # proxy format - http://user:pass@ip:port
+remove all these two lines before pasting proxy
