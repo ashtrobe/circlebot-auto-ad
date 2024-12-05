@@ -1,3 +1,7 @@
-## Tutorial
+# Multi Account and Proxy Support
 
-- https://youtu.be/5pwOF81styE
+- *Paste your query_id/user_id inside ```data.txt``` file.**
+
+- *If you're using multiple accounts, paste proxies inside ```proxy.txt``` file.**
+
+For support, Join - [Telegram Chat](https://t.me/+I2ePRowcRoVkNjhl)
